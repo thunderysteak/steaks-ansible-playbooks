@@ -1,0 +1,20 @@
+---
+
+- name: Deploy NFS Server
+  gather_facts: True
+  become: yes
+  hosts: nfs_server
+  roles:
+    - nfsserver
+  vars_files:
+    - ./vars/common.yml
+
+- name: Deploy NFS Client
+  gather_facts: True
+  become: yes
+  hosts: nfs_client
+  roles:
+    - nfsclient
+  vars_files:
+    - ./vars/common.yml
+

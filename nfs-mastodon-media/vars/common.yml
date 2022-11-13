@@ -1,0 +1,6 @@
+nfs_client_fqdn: "example2.local"
+nfs_dir_mount: "/home/mastodon/live/public/system"
+nfs_server: "example.local" 
+nfs_server_dir: "/opt/nfs/mastodon-media" 
+nfs_dir_owner: "mastodon"
+nfs_dir_group: "nginx"

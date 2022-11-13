@@ -1,0 +1,31 @@
+- name: Install nfs-utils
+  package:
+    name: nfs-utils
+    state: present
+
+- name: "Start and enable nfs-server service"
+  service: "name=nfs-server state=started enabled=yes"
+
+- name: Create mount folder
+  file:
+    path: '{{ nfs_server_dir }}'
+    state: directory
+    owner: 'nfsnobody'
+    group: 'nfsnobody'
+    mode: '0755'
+
+# Using no_root_squash is THREAT MODELING because if we have a threat actor dropping malware via NFS 
+# then we have way bigger problems. Insecure is required for any host behind NAT 
+# as it tries to connect with a high port.
+- name: 'Modify /etc/exports to allow {{ nfs_client_fqdn }} to connect'
+  lineinfile:
+    path: /etc/exports
+    regexp: '^{{ nfs_server_dir }} {{ nfs_client_fqdn }}'
+    line: '{{ nfs_server_dir }} {{ nfs_client_fqdn }}(rw,sync,no_root_squash,insecure)'
+
+- name: Reload exports
+  shell: 'exportfs -r'
+
+- name: Restart nfs-server
+  become: yes
+  service: name=nfs-server state=restarted

@@ -1,0 +1,60 @@
+- name: Install nfs-utils
+  package:
+    name: nfs-utils
+    state: present
+
+- name: Install SELinux Policy Utilities
+  package:
+    name: policycoreutils-python-utils
+    state: present
+
+- name: 'Check if {{ nfs_dir_mount }} folder is empty before proceeding'
+  find:
+    paths: '{{ nfs_dir_mount }}'
+    file_type: any
+    hidden: yes
+  register: filesFound
+
+- fail:
+     msg: 'The {{ nfs_dir_mount }} folder meant for mounting NFS is not empty. Bailing out to prevent data loss.'
+  when: filesFound.matched > 0
+
+- name: Create mount folder
+  file:
+    path: '{{ nfs_dir_mount }}'
+    state: directory
+    owner: '{{ nfs_dir_owner }}'
+    group: '{{ nfs_dir_group }}'
+    mode: '0755'
+
+#Fix with https://galaxy.ansible.com/linux-system-roles/selinux in the future cuz it fails when already set
+- name: 'Set httpd_t SELinux context policy for {{ nfs_dir_mount }}'
+  command: 'semanage fcontext -a -t httpd_sys_content_t {{ nfs_dir_mount }}'
+#  ignore_errors: yes
+
+#Fix with https://galaxy.ansible.com/linux-system-roles/selinux in the future cuz it fails when already set
+- name: 'Set httpd_use_nfs SELinux context policy to true'
+  command: 'setsebool -P httpd_use_nfs 1'
+#  ignore_errors: yes
+
+- name: Modify fstab to automount on boot
+  lineinfile:
+    path: /etc/fstab
+    regexp: '^{{ nfs_server }}:{{ nfs_server_dir }}'
+    line: '{{ nfs_server }}:{{ nfs_server_dir }} {{ nfs_dir_mount }} nfs _netdev 0 0'
+
+- name: Mount directory 
+  mount:
+    src: "{{ nfs_server }}:{{ nfs_server_dir }}"
+    path: "{{ nfs_dir_mount }}"
+    state: mounted
+    opts: rw,sync
+    fstype: nfs
+
+- name: Ensure that we have correct file permissions after NFS mount
+  file:
+    path: '{{ nfs_dir_mount }}'
+    owner: '{{ nfs_dir_owner }}'
+    group: '{{ nfs_dir_group }}'
+    recurse: yes
+
